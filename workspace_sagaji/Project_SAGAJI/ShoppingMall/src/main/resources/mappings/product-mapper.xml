@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="ProductDAO">
+	<!-- 메뉴 리스트에서 선택된 카테고리에 해당하는 제품 리스트 조회 -->
+	<select id="getCategoryProductList" parameterType="int" resultType="camelHashMap">
+		<![CDATA[
+			SELECT * 
+			  FROM T_SGJ_PRDCT A, T_SGJ_PRDCT_DETAIL B, T_SGJ_CATEGORY C, T_SGJ_IMAGE D
+			 WHERE A.PRDCT_NO = B.PRDCT_NO
+			   AND B.PRDCT_CATEGORY_CD = C.CATEGORY_CD
+			   AND B.PRDCT_NO = D.PRDCT_NO
+			   AND B.PRDCT_DETAIL_NO = D.PRDCT_DETAIL_NO
+		]]>
+		<if test="categoryCd != 1">
+			AND B.PRDCT_CATEGORY_CD = #{categoryCd}
+		</if>
+	</select>
+
+	<!-- 카테고리 정보 조회 -->
+	<select id="getCategoryInfo" parameterType="int" resultType="camelHashMap">
+		<![CDATA[
+			SELECT * 
+			  FROM T_SGJ_CATEGORY
+			 WHERE CATEGORY_CD = #{categoryCd}
+		]]>
+	</select>	
+	
+	<!-- 카테고리 리스트 조회 -->
+	<select id="getCategoryList" resultType="camelHashMap">
+		<![CDATA[
+			SELECT * 
+			  FROM T_SGJ_CATEGORY
+		]]>
+	</select>
+	
+	<!-- 
+		인기제품 TOP5 조회
+		-> 주문내역이 많은 제품 순으로 TOP 5
+	-->
+	<select id="getPopularProductList" resultType="camelHashMap">
+		<![CDATA[
+			SELECT A.PRDCT_NO, B.PRDCT_DETAIL_NO, A.PRDCT_NM, B.PRDCT_SIZE, B.PRDCT_PRICE, D.PRDCT_IMAGE_NM, D.PRDCT_IMAGE_TYPE
+			  FROM T_SGJ_PRDCT A, T_SGJ_PRDCT_DETAIL B
+			  JOIN (SELECT B.PRDCT_NO, B.PRDCT_DETAIL_NO, COUNT(B.PRDCT_NO) AS "ORDER_CNT"
+					  FROM T_SGJ_ORDER A, T_SGJ_ORDER_ITEM B
+					 WHERE A.ORDER_NO = B.ORDER_NO
+					 GROUP BY B.PRDCT_NO, B.PRDCT_DETAIL_NO) C ON B.PRDCT_NO = C.PRDCT_NO
+															  AND B.PRDCT_DETAIL_NO = C.PRDCT_DETAIL_NO
+			  JOIN T_SGJ_IMAGE D ON B.PRDCT_NO = D.PRDCT_NO
+			  					AND B.PRDCT_DETAIL_NO = D.PRDCT_DETAIL_NO
+			 WHERE A.PRDCT_NO = B.PRDCT_NO
+			 ORDER BY C.ORDER_CNT DESC
+			 LIMIT 5
+		]]>
+	</select>
+	
+	<!-- 
+		신제품 조회
+		-> T_SGJ_PRDCT_DETAIL 테이블의 등록일자를 기준으로 최신순으로 정렬하여 최대 12개의 데이터만 조회
+	-->
+	<select id="getNewProductList" resultType="camelHashMap">
+		<![CDATA[
+			SELECT A.PRDCT_NO, B.PRDCT_DETAIL_NO, A.PRDCT_NM, B.PRDCT_SIZE, B.PRDCT_PRICE, C.PRDCT_IMAGE_NM, C.PRDCT_IMAGE_TYPE
+			  FROM T_SGJ_PRDCT A, T_SGJ_PRDCT_DETAIL B, T_SGJ_IMAGE C
+			 WHERE A.PRDCT_NO = B.PRDCT_NO
+			   AND B.PRDCT_NO = C.PRDCT_NO
+			   AND B.PRDCT_DETAIL_NO = C.PRDCT_DETAIL_NO
+			 ORDER BY B.PRDCT_DETAIL_RGST_DATE DESC
+			 LIMIT 12
+		]]>
+	</select>
+	
+	<!-- 제품 리스트 조회 -->
+	<select id="getProductList" parameterType="string" resultType="camelHashMap">
+		<![CDATA[
+			SELECT A.PRDCT_NO, B.PRDCT_DETAIL_NO, A.PRDCT_NM, A.PRDCT_RGST_DATE, B.PRDCT_PRICE, D.PRDCT_IMAGE_NM, D.PRDCT_IMAGE_TYPE
+			  FROM T_SGJ_PRDCT A, T_SGJ_PRDCT_DETAIL B, T_SGJ_CATEGORY C, T_SGJ_IMAGE D
+			 WHERE A.PRDCT_NO = B.PRDCT_NO
+			   AND B.PRDCT_CATEGORY_CD = C.CATEGORY_CD
+			   AND B.PRDCT_NO = D.PRDCT_NO
+			   AND B.PRDCT_DETAIL_NO = D.PRDCT_DETAIL_NO
+		]]>
+		<if test="searchKeyword != '' and searchKeyword != null">
+			AND (A.PRDCT_NM LIKE CONCAT('%', #{searchKeyword}, '%')
+			OR C.CATEGORY_NM LIKE CONCAT('%', #{searchKeyword}, '%'))
+		</if>
+	</select>
+
+	<!-- 제품 등록 -->
+	<insert id="insertProduct" parameterType="map">
+		INSERT INTO T_SGJ_PRDCT
+			(
+				PRDCT_NO
+				,PRDCT_NM
+				,PRDCT_INFO
+				,PRDCT_RGST_DATE
+				,PRDCT_USE_YN
+			)
+		VALUES(
+				#{prdctNo}
+				,#{prdctNm}
+				,#{prdctInfo}
+				,now()
+				,'Y'
+			)
+	</insert>
+			
+	<insert id="insertProductDetail" parameterType="map">
+		INSERT INTO T_SGJ_PRDCT_DETAIL
+			(
+				PRDCT_NO
+				,PRDCT_DETAIL_NO 
+				,PRDCT_CATEGORY_CD
+				,PRDCT_SIZE 
+				,PRDCT_COLOR
+				,PRDCT_MATERIAL
+				,PRDCT_PRICE
+				,PRDCT_REMAIN
+				,PRDCT_DETAIL_RGST_DATE
+				,PRDCT_MODF_DATE
+				,PRDCT_DETAIL_USE_YN
+			)
+		VALUES(
+				#{prdctNo}
+				,(
+					SELECT A.NUM FROM 
+					(
+						SELECT IFNULL(MAX(PRDCT_DETAIL_NO), 0) + 1  AS NUM
+						FROM T_SGJ_PRDCT_DETAIL
+						WHERE PRDCT_NO = #{prdctNo}
+					) A
+				 )
+				,#{prdctCategoryCd}
+				,#{prdctSize}
+				,#{prdctColor}
+				,#{prdctMaterial}
+				,#{prdctPrice}
+				,#{prdctRemain}
+				,now()
+				,now()
+				,'Y'				
+			)
+	</insert>
+	
+	<!-- 제품 수정 -->
+	<update id="updateProduct" parameterType="map">
+		UPDATE T_SGJ_PRDCT
+		SET PRDCT_NM = #{prdctNm}	
+			,PRDCT_INFO = #{prdctInfo}	
+		WHERE PRDCT_NO = #{prdctNo}
+	</update>
+	
+	<!-- 제품 수정 -->
+	<update id="updateProductDetail" parameterType="map">
+	  	UPDATE T_SGJ_PRDCT_DETAIL
+		<set> 
+			<if test="prdctSize != null and prdctSize != ''">PRDCT_SIZE = #{prdctSize},</if>
+			<if test="prdctColor != null and prdctColor != ''">PRDCT_COLOR = #{prdctColor},</if>
+			<if test="prdctMaterial != null and prdctMaterial != ''">PRDCT_MATERIAL = #{prdctMaterial},</if>
+			<if test="prdctPrice != null and prdctPrice != ''">PRDCT_PRICE = #{prdctPrice},</if>
+			<if test="prdctRemain != null and prdctRemain != ''">PRDCT_REMAIN = #{prdctRemain},</if>
+			PRDCT_MODF_DATE = NOW()
+		</set>
+		WHERE PRDCT_NO = #{prdctNo}
+		AND	  PRDCT_DETAIL_NO = #{prdctDetailNo}
+	</update>
+	
+	<!-- 제품 삭제 -->
+	<update id="useYnProduct" parameterType="map">
+		UPDATE T_SGJ_PRDCT
+		SET PRDCT_USE_YN = #{prdctUseYn}		
+		WHERE PRDCT_NO = #{prdctNo}
+		
+	  	UPDATE T_SGJ_PRDCT_DETAIL
+		SET PRDCT_USE_YN = 'N'
+		WHERE PRDCT_NO = #{prdctNo}
+		AND	  PRDCT_DETAIL_NO = #{prdctDetailNo}
+	</update>
+	
+	<!-- 번호중복 -->
+	<select id="noCheck" parameterType="String" resultType="int">
+		<![CDATA[
+			SELECT COUNT(*) 
+			  FROM T_SGJ_PRDCT
+			 WHERE PRDCT_NO = #{prdctNo}
+		]]>
+	</select>	
+	
+	<select id="getUpdateDetail" parameterType="map" resultType="map">
+		select 
+			A.PRDCT_NO
+			,A.PRDCT_NM
+			,A.PRDCT_INFO
+			,B.PRDCT_DETAIL_NO
+			,B.PRDCT_COLOR
+			,B.PRDCT_CATEGORY_CD
+			,B.PRDCT_MATERIAL
+			,B.PRDCT_PRICE
+			,B.PRDCT_REMAIN
+			,B.PRDCT_SIZE
+			,DATE_FORMAT(A.PRDCT_RGST_DATE, '%Y-%m-%d') AS PRDCT_RGST_DATE
+			,DATE_FORMAT(B.PRDCT_MODF_DATE, '%Y-%m-%d') AS PRDCT_MODF_DATE
+		from 
+			t_sgj_prdct A
+			INNER JOIN t_sgj_prdct_detail B
+			ON A.PRDCT_NO = B.PRDCT_NO
+			WHERE A.PRDCT_NO = #{prdctNo}	
+			<!-- AND	  B.PRDCT_DETAIL_NO = #{prdctDetailNo} -->
+	</select>
+	
+	<select id="getProductInfo" parameterType="map" resultType="map">
+		select 
+			A.PRDCT_NO
+			,A.PRDCT_NM
+			,A.PRDCT_INFO
+			,B.PRDCT_DETAIL_NO
+			,B.PRDCT_SIZE
+			,B.PRDCT_COLOR
+			,B.PRDCT_CATEGORY_CD
+			,B.PRDCT_MATERIAL
+			,B.PRDCT_PRICE
+			,B.PRDCT_REMAIN
+			,DATE_FORMAT(A.PRDCT_RGST_DATE, '%Y-%m-%d') AS PRDCT_RGST_DATE
+			,DATE_FORMAT(B.PRDCT_MODF_DATE, '%Y-%m-%d') AS PRDCT_MODF_DATE
+			,(SELECT CONCAT(S.PRDCT_IMAGE_NM, S.PRDCT_IMAGE_TYPE )
+				FROM t_sgj_image S 
+	            WHERE S.PRDCT_NO = A.PRDCT_NO
+	            AND S.PRDCT_DETAIL_NO = B.PRDCT_DETAIL_NO) AS IMG
+		from 
+			t_sgj_prdct A
+			INNER JOIN t_sgj_prdct_detail B
+			ON A.PRDCT_NO = B.PRDCT_NO
+			WHERE A.PRDCT_NO = #{prdctNo}	
+			AND	  B.PRDCT_DETAIL_NO = #{prdctDetailNo}
+	</select>
+	
+	
+</mapper>

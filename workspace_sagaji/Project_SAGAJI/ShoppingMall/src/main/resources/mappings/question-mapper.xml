@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<!-- * CREATE TABLE T_SGJ_QUESTION ( * QUESTION_NO INT PRIMARY KEY, * QUESTION_TITLE 
+	VARCHAR(150) NOT NULL, * QUESTION_CONTENT VARCHAR(1500) NOT NULL, * QUESTION_RGST_DATE 
+	DATETIME NOT NULL DEFAULT NOW(), * QUESTION_STATE VARCHAR(20) NOT NULL DEFAULT 
+	'접수중', * QUESTION_ANSWER VARCHAR(1500) NULL, * USER_ID VARCHAR(30) NOT NULL, 
+	* QUESTION_SECRET_YN CHAR(1) NULL DEFAULT 'N' ); -->
+<mapper namespace="QuestionDAO">
+	<!-- 쿼리 작성 영역 -->
+	<insert id="insertQuestion" parameterType="question">
+		INSERT INTO
+		T_SGJ_QUESTION(
+		QUESTION_NO,
+		QUESTION_TITLE,
+		QUESTION_CONTENT,
+		QUESTION_RGST_DATE,
+		USER_ID,
+		QUESTION_SECRET_YN
+		)
+		VALUES (
+		(SELECT IFNULL(MAX(A.QUESTION_NO), 0) + 1 FROM T_SGJ_QUESTION A),
+		#{questionTitle},
+		#{questionContent},
+		now(),
+		#{userId},
+		#{questionSecretYn}
+		)
+	</insert>
+
+	<select id="getQuestion" parameterType="int"
+		resultType="question">
+		SELECT *
+		FROM T_SGJ_QUESTION
+		WHERE QUESTION_NO = #{questionNo}
+	</select>
+
+	<select id="getQuestionList" resultType="question">
+		SELECT * FROM T_SGJ_QUESTION
+
+	</select>
+	
+	<update id="updateQuestion" parameterType="question">
+		UPDATE T_SGJ_QUESTION
+		   SET QUESTION_TITLE = #{questionTitle},
+			   QUESTION_CONTENT = #{questionContent},
+			   QUESTION_ANSWER = #{questionAnswer},
+			   QUESTION_MODF_DATE = NOW()
+		 WHERE QUESTION_NO = #{questionNo}
+		   AND USER_ID = #{userId}
+	</update>
+
+	<delete id="deleteQuestion" parameterType="int">
+		DELETE FROM T_SGJ_QUESTION
+			WHERE QUESTION_NO = #{questionNo}
+	</delete>
+
+
+
+
+
+
+
+
+
+</mapper>

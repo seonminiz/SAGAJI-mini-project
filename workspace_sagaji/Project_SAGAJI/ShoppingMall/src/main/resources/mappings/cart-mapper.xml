@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+	PUBLIC "-//mybatis.org//DTD mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="CartDAO">
+	<!-- 장바구니 담기 -->
+	<select id="getCartList" parameterType="string" resultType="camelHashMap">
+		SELECT A.*
+			 , D.PRDCT_NM
+		     , D.PRDCT_INFO
+		     , D.PRDCT_PRICE
+		     , D.PRDCT_IMAGE_NM
+		     , D.PRDCT_IMAGE_TYPE
+		     , D.PRDCT_NO
+		     , D.PRDCT_DETAIL_NO
+		     , (D.PRDCT_PRICE * A.CART_CNT) AS TOTAL
+			FROM T_SGJ_CART A,
+				 (
+					 SELECT B.PRDCT_NM
+						     , B.PRDCT_INFO
+							 , C.PRDCT_PRICE
+		                     , B.PRDCT_NO
+		                     , C.PRDCT_DETAIL_NO
+		                     , D.PRDCT_IMAGE_NM
+		                     , D.PRDCT_IMAGE_TYPE
+						FROM T_SGJ_PRDCT B,
+							T_SGJ_PRDCT_DETAIL C,
+							T_SGJ_IMAGE D
+						WHERE B.PRDCT_NO = C.PRDCT_NO
+						  AND C.PRDCT_NO = D.PRDCT_NO
+						  AND C.PRDCT_DETAIL_NO = D.PRDCT_DETAIL_NO
+				 ) D
+			WHERE A.USER_ID = #{userId}
+		      AND A.PRDCT_NO = D.PRDCT_NO
+		      AND A.PRDCT_DETAIL_NO = D.PRDCT_DETAIL_NO 
+	</select>
+	
+	<delete id="deleteCart" parameterType="map">
+		DELETE FROM T_SGJ_CART
+			WHERE PRDCT_NO = #{prdctNo}
+			  AND PRDCT_DETAIL_NO = #{prdctDetailNo}	
+	</delete>
+	
+	<insert id="insertCart" parameterType="cart">
+		INSERT INTO T_SGJ_CART
+		VALUES (
+			#{userId},
+			#{prdctNo},
+			#{prdctDetailNo},
+			1,
+			now()
+		)
+	</insert>
+
+	<select id="checkCartCnt" parameterType="cart" resultType="int">
+		SELECT COUNT(*)
+			FROM T_SGJ_CART
+				WHERE USER_ID = #{userId}
+					AND PRDCT_NO = #{prdctNo}
+					AND PRDCT_DETAIL_NO = #{prdctDetailNo}
+	</select>
+	
+	<update id="updateCartCnt" parameterType="cart">
+		UPDATE T_SGJ_CART
+			SET CART_CNT = CART_CNT + 1
+		 	WHERE USER_ID = #{userId}
+				AND PRDCT_NO = #{prdctNo}
+				AND PRDCT_DETAIL_NO = #{prdctDetailNo}
+	</update>
+	
+	<select id="getCartTotalPrice" parameterType="string" resultType="string">
+		SELECT FORMAT(SUM(C.TMP), 0) AS TOTAL_PRICE
+			FROM (
+					SELECT (A.CART_CNT * B.PRDCT_PRICE) AS TMP
+						 FROM T_SGJ_CART A
+							, T_SGJ_PRDCT_DETAIL B
+						WHERE A.USER_ID = #{userId}
+						  AND A.PRDCT_NO = B.PRDCT_NO
+						  AND A.PRDCT_DETAIL_NO = B.PRDCT_DETAIL_NO
+						GROUP BY A.PRDCT_NO, A.PRDCT_DETAIL_NO
+				 ) C
+	</select>
+</mapper>
